@@ -135,11 +135,6 @@ def main():
         'culturaX_en': 'culturaX_en'
     }
 
-    zstd_files_info = {
-        'subset_example': './data/SlimPajama-compressed/example.zst',
-        # Add more zstd file paths as needed
-    }
-
     for subset_name, dataset_path in datasets_info.items():
         extract_from_file(dataset_path, subset_name, './data/processed')
 
