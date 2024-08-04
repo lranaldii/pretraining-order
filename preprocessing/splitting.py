@@ -3,7 +3,7 @@ from tqdm import tqdm
 import logging
 import os
 import zstandard as zstd
-from datasets import load_from_disk
+from datasets import load_from_disk, concatenate_datasets
 
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s %(name)s %(lineno)s: %(message)s",
@@ -89,17 +89,26 @@ def split_and_process_dataset(dataset, subset_name, output_dir):
     process_split_dataset(validation_dataset, subset_name, "validation", output_dir)
     process_split_dataset(test_dataset, subset_name, "test", output_dir)
 
-def extract_subset_data(subset_name, dataset_path):
+def extract_and_combine_datasets(dataset_names, output_name):
     """
-    Extracts and processes a dataset stored on disk.
+    Loads and combines multiple datasets stored on disk.
 
-    :param subset_name: Name of the subset to process.
-    :param dataset_path: Path to the dataset directory.
+    :param dataset_names: A list of dataset names to load and combine.
+    :param output_name: Name for the combined dataset.
     """
-    logger.info(f"Loading {subset_name} dataset from {dataset_path}.")
-    dataset = load_from_disk(dataset_path)
-    output_dir = f"./data/processed/{subset_name}"
-    split_and_process_dataset(dataset, subset_name, output_dir)
+    combined_dataset = None
+    for subset_name in dataset_names:
+        dataset_path = f"./{subset_name}"
+        logger.info(f"Loading {subset_name} dataset from {dataset_path}.")
+        dataset = load_from_disk(dataset_path)
+
+        if combined_dataset is None:
+            combined_dataset = dataset
+        else:
+            combined_dataset = concatenate_datasets([combined_dataset, dataset])
+
+    output_dir = f"./data/processed/{output_name}"
+    split_and_process_dataset(combined_dataset, output_name, output_dir)
 
 def extract_from_file(file_path, subset_name, output_dir):
     """
@@ -126,23 +135,16 @@ def extract_from_file(file_path, subset_name, output_dir):
         extract_subset_data(subset_name, file_path)
 
 def main():
-    datasets_info = {
-        'mc4_it_clean': 'mc4_it_clean_tiny',
-        'mc4_en_clean': 'c4_200m_output',
-        'wikipedia_it': 'wikipedia_it_20220120',
-        'wikipedia_en': 'wikipedia_en_20220120',
-        'culturaX_it': 'culturaX_it',
-        'culturaX_en': 'culturaX_en'
+    datasets_to_combine = {
+        'mc4': ['mc4_it_clean_tiny', 'mc4_en_clean_tiny'],
+        'wikipedia': ['wikipedia_it_20220120', 'wikipedia_en_20220120'],
+        'culturaX': ['culturaX_it', 'culturaX_en']
     }
 
-    for subset_name, dataset_path in datasets_info.items():
-        extract_from_file(dataset_path, subset_name, './data/processed')
-
-    for subset_name, file_path in zstd_files_info.items():
-        extract_from_file(file_path, subset_name, './data/processed')
+    for output_name, subset_names in datasets_to_combine.items():
+        extract_and_combine_datasets(subset_names, output_name)
 
 if __name__ == '__main__':
     if not os.path.exists("./data/processed"):
         os.mkdir("./data/processed")
     main()
-
