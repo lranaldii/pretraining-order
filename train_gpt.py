@@ -32,8 +32,6 @@ def train_gpt2_mini():
     with open("temp_corpus/corpus.txt", "w", encoding="utf-8") as f:
         for doc in documents:
             f.write(doc['contents'] + "\n")
-    
-    # Train a Byte-Level BPE tokenizer from scratch
     tokenizer = ByteLevelBPETokenizer()
     tokenizer.train(files="temp_corpus/corpus.txt", vocab_size=50257, min_frequency=2, special_tokens=[
         "<s>",
@@ -43,14 +41,11 @@ def train_gpt2_mini():
         "<mask>",
     ])
 
-    # Save the trained tokenizer
     os.makedirs("custom_tokenizer", exist_ok=True)
     tokenizer.save_model("custom_tokenizer")
-
-    # Load the tokenizer using the Hugging Face Transformers library
     tokenizer = GPT2Tokenizer.from_pretrained("custom_tokenizer")
 
-    #custom GPT-2
+    #custom conf
     config = GPT2Config(
         vocab_size=tokenizer.vocab_size,
         n_positions=128,
@@ -67,8 +62,6 @@ def train_gpt2_mini():
     tokenized_inputs = []
     for doc in tqdm(documents, desc="Tokenizing documents"):
         tokenized_inputs.append(tokenize_function(doc))
-
-    # Convert the tokenized data into a PyTorch dataset
     input_ids = torch.cat([item['input_ids'] for item in tokenized_inputs], dim=0)
     attention_mask = torch.cat([item['attention_mask'] for item in tokenized_inputs], dim=0)
 
@@ -85,17 +78,12 @@ def train_gpt2_mini():
         logging_steps=100,
     )
 
-    # Initialize the Trainer
     trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=dataset,
     )
-
-    # Train the model
     trainer.train()
-
-    # Save the trained model and tokenizer
     trainer.save_model("./gpt2")
     tokenizer.save_pretrained("./gpt2")
 
